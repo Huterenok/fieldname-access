@@ -6,7 +6,7 @@ do some actions based on other data
 
 ### Practical example
 
-Let's say we have a User structure and Crit criteria for it. Having information on these two elements, we can determine our next steps.
+Let's say we have a User structure and Crit criteria for it. 
 
 ```rust
 use fieldname_access::FieldnameAccess;
@@ -29,7 +29,28 @@ enum CritKind {
     Equals,
     BiggerThan,
 }
+```
 
+Based on this information `FieldnameAccess` will generate all possible types
+of field and methods for `User` struct to access them by name:
+
+```rust
+enum UserField<'a> {
+	String(&'a String),
+	U64(&'a u64),
+	Bool(&'a bool)
+}
+
+enum UserFieldMut<'a> {
+	String(&'a mut String),
+	U64(&'a mut u64),
+	Bool(&'a mut bool)
+}
+```
+
+Having information on these two elements, we can determine our next steps.
+
+```rust
 let user = User {
     age: 2022,
     name: String::from("Radahn"),
