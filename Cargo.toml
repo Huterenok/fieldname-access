@@ -3,6 +3,9 @@ name = "fieldname-access"
 version = "0.1.0"
 edition = "2021"
 rust-version = "1.57"
+description = "Derive macro for safe struct field access by their names in runtime"
+license = "MIT OR Apache-2.0"
+authors = ["huterok"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
