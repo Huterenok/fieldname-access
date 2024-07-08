@@ -4,7 +4,7 @@ use proc_macro2::{Ident, Span};
 use quote::{quote, ToTokens};
 use syn::{parse_macro_input, Data, DeriveInput, Fields, FieldsNamed};
 
-/// Derive macro for safe struct field access by their names in runtime 
+/// Derive macro for safe struct field access by their names in runtime
 #[proc_macro_derive(FieldnameAccess)]
 pub fn fieldname_accessor(inp: TokenStream) -> TokenStream {
     let inp = parse_macro_input!(inp as DeriveInput);
