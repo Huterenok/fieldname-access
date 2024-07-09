@@ -7,7 +7,7 @@ description = "Derive macro for safe struct field access by their names in runti
 license = "MIT OR Apache-2.0"
 authors = ["huterok"]
 documentation = "https://docs.rs/fieldname-access/latest/fieldname_access/"
-keywords = ["struct", "field", "access", "runtime access", "field access"]
+keywords = ["struct", "field", "access", "runtime-access", "field-access"]
 repository = "https://github.com/Huterenok/fieldname-access"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
