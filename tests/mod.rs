@@ -188,3 +188,29 @@ fn complex_test() {
     }
     assert!(!user.does_love_ranni);
 }
+
+#[derive(FieldnameAccess)]
+struct TestComplexPath {
+    name: std::option::Option<String>,
+    age: std::option::Option<std::option::Option<i64>>,
+}
+
+#[test]
+fn test_complex_type_path() {
+    let structure = TestComplexPath {
+        name: Some(String::from("Вася")),
+        age: Some(Some(321)),
+    };
+
+    if let Some(TestComplexPathField::OptionString(Some(val))) = structure.field("name") {
+        assert_eq!(val, &"Вася");
+    } else {
+        panic!("Провал");
+    }
+
+    if let Some(TestComplexPathField::OptionOptionI64(Some(Some(val)))) = structure.field("age") {
+        assert_eq!(val, &321);
+    } else {
+        panic!("Провал");
+    }
+}

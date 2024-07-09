@@ -2,7 +2,7 @@ use itertools::Itertools;
 use proc_macro::TokenStream;
 use proc_macro2::{Ident, Span};
 use quote::{quote, ToTokens};
-use syn::{parse_macro_input, Data, DeriveInput, Fields, FieldsNamed};
+use syn::{parse_macro_input, Data, DeriveInput, Fields, FieldsNamed, Type};
 
 /// Derive macro for safe struct field access by their names in runtime
 #[proc_macro_derive(FieldnameAccess)]
@@ -81,25 +81,48 @@ pub fn fieldname_accessor(inp: TokenStream) -> TokenStream {
     tokens.into()
 }
 
-fn generate_variant_name(ty: &syn::Type) -> String {
+fn generate_variant_name(ty: &Type) -> String {
     let type_str = ty.to_token_stream().to_string();
-    let cleaned_str = type_str
-        .replace(" ", "")
-        .replace("::", "")
-        .replace("<", "")
-        .replace(">", "")
-        .replace(",", "");
+    shorten_type(type_str)
+}
 
-    let mut chars = cleaned_str.chars();
-    if let Some(first) = chars.next() {
-        first.to_uppercase().collect::<String>() + chars.as_str()
+fn shorten_type(type_str: String) -> String {
+    let mut short_type = type_str
+        .chars()
+        .skip_while(|c| !c.is_uppercase())
+        .peekable();
+
+    if let Some(_) = short_type.peek() {
+        let mut complex_type_str = String::with_capacity(
+            short_type
+                .size_hint()
+                .1
+                .expect("Impossible as string len is finite"),
+        );
+
+        while let Some(c) = short_type.next() {
+            if c.is_ascii_alphanumeric() {
+                complex_type_str.push(c);
+            }
+
+            if c == '<' {
+                complex_type_str += &shorten_type(short_type.collect());
+                break;
+            }
+        }
+        complex_type_str
     } else {
-        String::new()
+        let cleaned_str = type_str
+            .chars()
+            .filter(|c| c.is_ascii_alphanumeric())
+            .collect::<String>();
+
+        cleaned_str[0..1].to_uppercase() + &cleaned_str[1..]
     }
 }
 
 fn generate_enum_variants(
-    field_map: &[(Ident, syn::Type, Ident)],
+    field_map: &[(Ident, Type, Ident)],
     is_mut: bool,
 ) -> Vec<proc_macro2::TokenStream> {
     field_map
