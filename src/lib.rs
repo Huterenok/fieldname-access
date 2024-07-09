@@ -20,6 +20,7 @@ pub fn fieldname_accessor(inp: TokenStream) -> TokenStream {
     };
 
     let struct_ident = inp.ident;
+    let visibility = inp.vis;
     let fields = match &structure.fields {
         Fields::Named(FieldsNamed { named: x, .. }) => x.to_owned(),
         Fields::Unnamed(_) | Fields::Unit => {
@@ -50,17 +51,17 @@ pub fn fieldname_accessor(inp: TokenStream) -> TokenStream {
     let match_arms_mut = generate_match_arms(&field_map, &value_enum_ident_mut, true);
 
     let tokens = quote! {
-        pub enum #value_enum_ident<'a> {
+        #visibility enum #value_enum_ident<'a> {
             #(#value_variants,)*
         }
 
-        pub enum #value_enum_ident_mut<'a> {
+        #visibility enum #value_enum_ident_mut<'a> {
             #(#value_variants_mut,)*
         }
 
         impl #struct_ident {
             /// Method for getting reference to struct field by its name
-            pub fn field<'a>(&'a self, fieldname: &str) -> Option<#value_enum_ident<'a>> {
+            #visibility fn field<'a>(&'a self, fieldname: &str) -> Option<#value_enum_ident<'a>> {
                 match fieldname {
                     #(#match_arms,)*
                     _ => None
@@ -68,7 +69,7 @@ pub fn fieldname_accessor(inp: TokenStream) -> TokenStream {
             }
 
             /// Method for getting mut reference to struct field by its name
-            pub fn field_mut<'a>(&'a mut self, fieldname: &str) -> Option<#value_enum_ident_mut<'a>> {
+            #visibility fn field_mut<'a>(&'a mut self, fieldname: &str) -> Option<#value_enum_ident_mut<'a>> {
                 match fieldname {
                     #(#match_arms_mut,)*
                     _ => None
