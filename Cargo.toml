@@ -1,12 +1,13 @@
 [package]
 name = "fieldname-access"
-version = "0.1.7"
+version = "0.1.8"
 edition = "2021"
 rust-version = "1.57"
 description = "Derive macro for safe struct field access by their names in runtime"
 license = "MIT OR Apache-2.0"
 authors = ["huterok"]
 documentation = "https://docs.rs/fieldname-access/latest/fieldname_access/"
+keywords = ["struct", "field", "access", "runtime access", "field access"]
 repository = "https://github.com/Huterenok/fieldname-access"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -16,6 +17,6 @@ proc-macro = true
 
 [dependencies]
 quote = "=1.0.35"
-syn = { version = "=2.0.52", features = ["derive","full", "extra-traits"] }
+syn = { version = "=2.0.52", features = ["derive", "full", "extra-traits"] }
 proc-macro2 = "=1.0.78"
 itertools = "=0.10.3"
