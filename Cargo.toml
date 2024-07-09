@@ -1,6 +1,6 @@
 [package]
 name = "fieldname-access"
-version = "0.1.3"
+version = "0.1.4"
 edition = "2021"
 rust-version = "1.57"
 description = "Derive macro for safe struct field access by their names in runtime"
