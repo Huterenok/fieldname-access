@@ -50,11 +50,11 @@ pub fn fieldname_accessor(inp: TokenStream) -> TokenStream {
     let match_arms_mut = generate_match_arms(&field_map, &value_enum_ident_mut, true);
 
     let tokens = quote! {
-        enum #value_enum_ident<'a> {
+        pub enum #value_enum_ident<'a> {
             #(#value_variants,)*
         }
 
-        enum #value_enum_ident_mut<'a> {
+        pub enum #value_enum_ident_mut<'a> {
             #(#value_variants_mut,)*
         }
 
