@@ -4,7 +4,7 @@ use proc_macro2::{Ident, Span, TokenTree};
 use quote::{quote, ToTokens};
 use syn::{
     parse_macro_input, parse_quote, Attribute, Data, DeriveInput, Expr, ExprLit, Fields,
-    FieldsNamed, Lit, Meta,
+    FieldsNamed, Lit, Meta, Type,
 };
 
 /// # Description
@@ -116,7 +116,7 @@ pub fn fieldname_accessor(inp: TokenStream) -> TokenStream {
         .into_iter()
         .map(|field| {
             let field_type = field.ty;
-            let field_name = field.ident.unwrap();
+            let field_name = field.ident.expect("Nameless fields are not supported");
             let variant_ident = if let Some(name) = retrieve_fieldname(&field.attrs) {
                 name
             } else {
@@ -215,7 +215,7 @@ fn generate_enum_variants(
 ) -> Vec<proc_macro2::TokenStream> {
     field_map
         .iter()
-        .unique_by(|(field_name, _, _)| field_name)
+        .unique_by(|(_, _, variant_ident)| variant_ident)
         .map(|(_, field_type, variant_ident)| {
             if is_mut {
                 quote! {
@@ -231,7 +231,7 @@ fn generate_enum_variants(
 }
 
 fn generate_match_arms(
-    field_map: &[(Ident, syn::Type, Ident)],
+    field_map: &[(Ident, Type, Ident)],
     value_enum_ident: &Ident,
     is_mut: bool,
 ) -> Vec<proc_macro2::TokenStream> {
@@ -273,24 +273,21 @@ fn retrieve_derives(attrs: &[Attribute], derive_group: &str) -> Option<proc_macr
 fn retrieve_fieldname(attrs: &[Attribute]) -> Option<Ident> {
     attrs.iter().find_map(|attr| match &attr.meta {
         Meta::NameValue(meta_name_value) => {
-            if let Some(fieldname_enum_attr) = meta_name_value.path.segments.first() {
-                if fieldname_enum_attr.ident == "fieldname" {
-                    if let Expr::Lit(ExprLit {
-                        lit: Lit::Str(ref str),
-                        ..
-                    }) = meta_name_value.value
-                    {
-                        Some(Ident::new(&str.value(), Span::call_site()))
-                    } else {
-                        None
-                    }
-                } else {
-                    None
-                }
+            let fieldname_enum_attr = meta_name_value.path.segments.first()?;
+            if fieldname_enum_attr.ident != "fieldname" {
+                return None;
+            }
+            if let Expr::Lit(ExprLit {
+                lit: Lit::Str(ref str),
+                ..
+            }) = meta_name_value.value
+            {
+                Some(Ident::new(&str.value(), Span::call_site()))
             } else {
                 None
             }
         }
+
         _ => None,
     })
 }
@@ -298,21 +295,16 @@ fn retrieve_fieldname(attrs: &[Attribute]) -> Option<Ident> {
 fn get_fieldname_enum_val(attrs: &[Attribute], attr_name: &str) -> Option<TokenTree> {
     attrs.iter().find_map(|attr| match &attr.meta {
         Meta::List(meta_list) => {
-            if let Some(fieldname_enum_attr) = meta_list.path.segments.first() {
-                if fieldname_enum_attr.ident == "fieldname_enum" {
-                    meta_list
-                        .tokens
-                        .clone()
-                        .into_iter()
-                        .skip_while(|token| token.to_string() != attr_name)
-                        .nth(2)
-                        .map(|token_tree| token_tree)
-                } else {
-                    None
-                }
-            } else {
-                None
+            let fieldname_enum_attr = meta_list.path.segments.first()?;
+            if fieldname_enum_attr.ident != "fieldname_enum" {
+                return None;
             }
+            meta_list
+                .tokens
+                .clone()
+                .into_iter()
+                .skip_while(|token| token.to_string() != attr_name)
+                .nth(2)
         }
         _ => None,
     })

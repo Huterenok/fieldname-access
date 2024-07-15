@@ -241,7 +241,9 @@ struct NamedFieldname {
     #[fieldname = "AmazingAge"]
     age: i64,
     dog_age: i64,
+    cat_age: i64,
 }
+
 #[derive(FieldnameAccess)]
 #[fieldname_enum(name = "AmazinglyTwo", derive_all = [Debug])]
 #[allow(unused)]
@@ -256,6 +258,7 @@ fn attributes() {
         age: 123,
         name: String::from("123"),
         dog_age: 123,
+        cat_age: 123,
     };
     match structure.field("name").unwrap() {
         Amazingly::String(val) => {
