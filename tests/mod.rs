@@ -214,3 +214,63 @@ fn test_complex_type_path() {
         panic!("Failed");
     }
 }
+
+#[derive(FieldnameAccess, Clone, Copy)]
+struct GenericStruct<'a, T, F>
+where
+    T: Into<String>,
+{
+    name: &'a T,
+    age: F,
+}
+#[test]
+fn generic_struct_fieldname_access() {
+    let structure = GenericStruct {
+        age: 123,
+        name: &String::from("123"),
+    };
+    match structure.field("name").unwrap() {
+        GenericStructField::T(name) => assert_eq!(*name, "123"),
+        GenericStructField::F(_age) => panic!(),
+    }
+}
+#[derive(FieldnameAccess)]
+#[fieldname_enum(name = "Amazingly", derive = [Debug, Clone], derive_mut = [Debug])]
+struct NamedFieldname {
+    name: String,
+    #[fieldname = "AmazingAge"]
+    age: i64,
+    dog_age: i64,
+}
+#[derive(FieldnameAccess)]
+#[fieldname_enum(name = "AmazinglyTwo", derive_all = [Debug])]
+#[allow(unused)]
+struct NamedFieldnameTwo {
+    name: String,
+    #[fieldname = "AmazingAge"]
+    age: i64,
+}
+#[test]
+fn attributes() {
+    let mut structure = NamedFieldname {
+        age: 123,
+        name: String::from("123"),
+        dog_age: 123,
+    };
+    match structure.field("name").unwrap() {
+        Amazingly::String(val) => {
+            let val_clone = val.clone();
+            assert_eq!(val_clone, "123")
+        }
+        Amazingly::AmazingAge(val) => assert_eq!(*val, 123),
+        Amazingly::I64(val) => assert_eq!(*val, 123),
+    }
+    match structure.field_mut("name").unwrap() {
+        AmazinglyMut::String(val) => {
+            println!("{}", val);
+            assert_eq!(val, "123")
+        }
+        AmazinglyMut::AmazingAge(val) => assert_eq!(*val, 123),
+        AmazinglyMut::I64(val) => assert_eq!(*val, 123),
+    }
+}
