@@ -2,10 +2,15 @@
 
 It is used to safely get values from the structure by field name when we
 do not know exactly which field we will need at the moment but can match it and
-do some actions based on other data
+do some actions based on other data.
+
+Also it generates `const FIELDS: [&'static str; FIELDS_COUNT]` constant with struct fields and `field_iter`
+method on struct for creating `Iterator` over struct using generated field enum.
 
 ### Container attributes
-* `#fieldname_enum(name = "NewName")` - Name of generated enum of possible values
+
+- `#fieldname_enum(name = "NewName")` - Name of generated enum of possible values
+
 ```rust
 use fieldname_access::FieldnameAccess;
 
@@ -27,9 +32,10 @@ match instance.field_mut("name").unwrap() {
 }
 ```
 
-* `#fieldname_enum(derive = [Debug, Clone], derive_mut = [Debug])` - Derive macroses for generated enums.
-`derive` only for enum with immutable references, `derive_mut` only for enum with mutable references. 
-It can be helpful when you want to derive `Clone` but only for immutable references as mutable are not clonable
+- `#fieldname_enum(derive = [Debug, Clone], derive_mut = [Debug])` - Derive macroses for generated enums.
+  `derive` only for enum with immutable references, `derive_mut` only for enum with mutable references.
+  It can be helpful when you want to derive `Clone` but only for immutable references as mutable are not clonable
+
 ```rust
 use fieldname_access::FieldnameAccess;
 
@@ -41,7 +47,8 @@ struct NamedFieldname {
 }
 ```
 
-* `#fieldname_enum(derive_all = [Debug])` - Derive macroses for immutable and mutable generated enums
+- `#fieldname_enum(derive_all = [Debug])` - Derive macroses for immutable and mutable generated enums
+
 ```rust
 use fieldname_access::FieldnameAccess;
 
@@ -55,8 +62,9 @@ struct NamedFieldname {
 
 ### Field attributes
 
-* `#fieldname = "AmazingAge"` - Name of variant for field in generated enum.
-It can be helpfull when you want to 'mark' field with specific variant name
+- `#fieldname = "AmazingAge"` - Name of variant for field in generated enum.
+  It can be helpfull when you want to 'mark' field with specific variant name
+
 ```rust
 use fieldname_access::FieldnameAccess;
 
@@ -77,12 +85,12 @@ match instance.field_mut("name").unwrap() {
     NamedFieldnameFieldMut::String(val) => {}
     NamedFieldnameFieldMut::MyAge(val) => {}
     NamedFieldnameFieldMut::I64(val) => {}
-}  
+}
 ```
 
 ### Practical example
 
-Let's say we have a User structure and Crit criteria for it. 
+Let's say we have a User structure and Crit criteria for it.
 
 ```rust
 use fieldname_access::FieldnameAccess;
@@ -91,7 +99,7 @@ use fieldname_access::FieldnameAccess;
 struct User {
     name: String,
     age: u64,
-    does_love_ranni: bool, // important 
+    does_love_ranni: bool, // important
 }
 
 struct Crit {

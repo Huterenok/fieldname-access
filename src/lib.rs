@@ -4,88 +4,96 @@ use proc_macro2::{Ident, Span, TokenTree};
 use quote::{quote, ToTokens};
 use syn::{
     parse_macro_input, parse_quote, Attribute, Data, DeriveInput, Expr, ExprLit, Fields,
-    FieldsNamed, Lit, Meta, Type,
+    FieldsNamed, Generics, Lit, Meta, Type, TypeGenerics, Visibility, WhereClause,
 };
 
 /// # Description
 ///
-/// Derive macro for safe struct field access by their names in runtime
+/// Derive macro for safe struct field access by their names in runtime.
+///
+/// Also it generates `const FIELDS: [&'static str; FIELDS_COUNT]` constant with struct fields and `field_iter`
+/// method on struct for creating `Iterator` over struct using generated field enum.
 ///
 ///### Container attributes
 ///* `#fieldname_enum(name = "NewName")` - Name of generated enum of possible values
+///
 ///```rust
-///use fieldname_access::FieldnameAccess;
+/// use fieldname_access::FieldnameAccess;
 ///
-///#[derive(FieldnameAccess, Default)]
-///#[fieldname_enum(name = "NewName")]
-///struct NamedFieldname {
-///  name: String,
-///  age: i64,
-///}
+/// #[derive(FieldnameAccess, Default)]
+/// #[fieldname_enum(name = "NewName")]
+/// struct NamedFieldname {
+///     name: String,
+///     age: i64,
+/// }
 ///
-///let mut instance = NamedFieldname::default();
-///match instance.field("name").unwrap() {
-///    NewName::String(val) => {}
-///    NewName::I64(val) => {},
-///}
-///match instance.field_mut("name").unwrap() {
-///    NewNameMut::String(val) => {}
-///    NewNameMut::I64(val) => {},
-///}
+/// let mut instance = NamedFieldname::default();
+/// match instance.field("name").unwrap() {
+///     NewName::String(val) => {}
+///     NewName::I64(val) => {},
+/// }
+/// match instance.field_mut("name").unwrap() {
+///     NewNameMut::String(val) => {}
+///     NewNameMut::I64(val) => {},
+/// }
 ///```
 ///
 ///* `#fieldname_enum(derive = [Debug, Clone], derive_mut = [Debug])` - Derive macroses for generated enums.
-///`derive` only for enum with immutable references, `derive_mut` only for enum with mutable references.
-///It can be helpful when you want to derive `Clone` but only for immutable references as mutable are not clonable
-///```rust
-///use fieldname_access::FieldnameAccess;
+/// `derive` only for enum with immutable references, `derive_mut` only for enum with mutable references.
+/// It can be helpful when you want to derive `Clone` but only for immutable references as mutable are not clonable
 ///
-///#[derive(FieldnameAccess)]
-///#[fieldname_enum(derive = [Debug, Clone], derive_mut = [Debug])]
-///struct NamedFieldname {
-///  name: String,
-///  age: i64,
-///}
+///```rust
+/// use fieldname_access::FieldnameAccess;
+///
+/// #[derive(FieldnameAccess)]
+/// #[fieldname_enum(derive = [Debug, Clone], derive_mut = [Debug])]
+/// struct NamedFieldname {
+///     name: String,
+///     age: i64,
+/// }
 ///```
 ///
 ///* `#fieldname_enum(derive_all = [Debug])` - Derive macroses for immutable and mutable generated enums
-///```rust
-///use fieldname_access::FieldnameAccess;
 ///
-///#[derive(FieldnameAccess)]
-///#[fieldname_enum(derive_all = [Debug])]
-///struct NamedFieldname {
-///  name: String,
-///  age: i64,
-///}
+///```rust
+/// use fieldname_access::FieldnameAccess;
+///
+/// #[derive(FieldnameAccess)]
+/// #[fieldname_enum(derive_all = [Debug])]
+/// struct NamedFieldname {
+///     name: String,
+///     age: i64,
+/// }
 ///```
 ///
 ///### Field attributes
 ///
 ///* `#fieldname = "AmazingAge"` - Name of variant for field in generated enum.
 ///It can be helpfull when you want to 'mark' field with specific variant name
-///```rust
-///use fieldname_access::FieldnameAccess;
 ///
-///#[derive(FieldnameAccess, Default)]
-///struct NamedFieldname {
-///  name: String,
-///  #[fieldname = "MyAge"]
-///  age: i64,
-///  dog_age: i64
-///}
-///let mut instance = NamedFieldname::default();
-///match instance.field("name").unwrap() {
-///    NamedFieldnameField::String(val) => {}
-///    NamedFieldnameField::MyAge(val) => {}
-///    NamedFieldnameField::I64(val) => {}
-///}
-///match instance.field_mut("name").unwrap() {
-///    NamedFieldnameFieldMut::String(val) => {}
-///    NamedFieldnameFieldMut::MyAge(val) => {}
-///    NamedFieldnameFieldMut::I64(val) => {}
-///}  
+///```rust
+/// use fieldname_access::FieldnameAccess;
+///
+/// #[derive(FieldnameAccess, Default)]
+/// struct NamedFieldname {
+///     name: String,
+///     #[fieldname = "MyAge"]
+///     age: i64,
+///     dog_age: i64
+/// }
+/// let mut instance = NamedFieldname::default();
+/// match instance.field("name").unwrap() {
+///     NamedFieldnameField::String(val) => {}
+///     NamedFieldnameField::MyAge(val) => {}
+///     NamedFieldnameField::I64(val) => {}
+/// }
+/// match instance.field_mut("name").unwrap() {
+///     NamedFieldnameFieldMut::String(val) => {}
+///     NamedFieldnameFieldMut::MyAge(val) => {}
+///     NamedFieldnameFieldMut::I64(val) => {}
+/// }  
 ///```
+
 #[proc_macro_derive(FieldnameAccess, attributes(fieldname_enum, fieldname))]
 pub fn fieldname_accessor(inp: TokenStream) -> TokenStream {
     let inp = parse_macro_input!(inp as DeriveInput);
@@ -98,11 +106,16 @@ pub fn fieldname_accessor(inp: TokenStream) -> TokenStream {
             panic!("FieldnameAccess cannot be used with enums")
         }
     };
-    let struct_ident = inp.ident;
-    let visibility = inp.vis;
+    let DeriveInput {
+        ident: struct_ident,
+        vis: visibility,
+        generics,
+        ..
+    } = inp;
+
     let field_lifetime: syn::GenericParam = parse_quote!('field);
-    let generics = inp.generics;
-    let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
+    let (impl_generics, ty_generics, where_clauses) = generics.split_for_impl();
+
     let mut enum_generics = generics.clone();
     enum_generics.params.push(field_lifetime.clone());
 
@@ -112,6 +125,7 @@ pub fn fieldname_accessor(inp: TokenStream) -> TokenStream {
             panic!("Nameless fields are not supported")
         }
     };
+
     let field_map = fields
         .into_iter()
         .map(|field| {
@@ -126,6 +140,8 @@ pub fn fieldname_accessor(inp: TokenStream) -> TokenStream {
             (field_name, field_type, variant_ident)
         })
         .collect::<Vec<_>>();
+    let field_list = field_map.iter().map(|(name, _, _)| name.to_string());
+    let field_count = field_map.len();
 
     let (derive, derive_mut) = if let Some(derives) = retrieve_derives(&inp.attrs, "derive_all") {
         (Some(derives.clone()), Some(derives))
@@ -139,26 +155,43 @@ pub fn fieldname_accessor(inp: TokenStream) -> TokenStream {
         &format!("{}Field", struct_ident),
         Span::call_site(),
     ));
-    let value_variants = generate_enum_variants(&field_map, false);
     let value_enum_ident_mut = Ident::new(&format!("{}Mut", value_enum_ident), Span::call_site());
+
+    let value_variants = generate_enum_variants(&field_map, false);
     let value_variants_mut = generate_enum_variants(&field_map, true);
 
     let match_arms = generate_match_arms(&field_map, &value_enum_ident, false);
     let match_arms_mut = generate_match_arms(&field_map, &value_enum_ident_mut, true);
 
+    let iter_impl = generate_iter_impl(
+        &visibility,
+        &value_enum_ident,
+        &struct_ident,
+        &ty_generics,
+        &where_clauses,
+        &enum_generics,
+        &field_lifetime,
+    );
+
     let tokens = quote! {
         /// Enum with reference to possible field
         #derive
-        #visibility enum #value_enum_ident #enum_generics #where_clause {
+        #visibility enum #value_enum_ident #enum_generics {
             #(#value_variants,)*
         }
 
         /// Enum with mutable reference to possible field
         #derive_mut
-        #visibility enum #value_enum_ident_mut #enum_generics #where_clause {
+        #visibility enum #value_enum_ident_mut #enum_generics {
             #(#value_variants_mut,)*
         }
-        impl #impl_generics #struct_ident #ty_generics #where_clause {
+
+        #iter_impl
+
+        impl #impl_generics #struct_ident #ty_generics #where_clauses {
+            /// List with all struct fields
+            const FIELDS: [&'static str; #field_count] = [#(#field_list),*];
+
             /// Method for getting reference to struct field by its name
             #visibility fn field<#field_lifetime>(&#field_lifetime self, fieldname: &str) -> Option<#value_enum_ident #enum_generics> {
                 match fieldname {
@@ -181,6 +214,49 @@ pub fn fieldname_accessor(inp: TokenStream) -> TokenStream {
 fn generate_variant_name(ty: &syn::Type) -> String {
     let type_str = ty.to_token_stream().to_string();
     shorten_type(type_str)
+}
+
+fn generate_iter_impl(
+    vis: &Visibility,
+    value_enum_ident: &Ident,
+    struct_ident: &Ident,
+    struct_generics: &TypeGenerics,
+    where_clauses: &Option<&WhereClause>,
+    enum_generics: &Generics,
+    enum_lt: &syn::GenericParam,
+) -> proc_macro2::TokenStream {
+    let iter_ident = Ident::new(&format!("{}FieldIter", value_enum_ident), Span::call_site());
+
+    let struct_generic_turbofish = struct_generics.as_turbofish();
+    let struct_ident_turbofish = quote! { #struct_ident #struct_generic_turbofish };
+
+    quote! {
+        #vis struct #iter_ident #enum_generics #where_clauses {
+            idx: usize,
+            inner: &#enum_lt #struct_ident #struct_generics
+        }
+
+        impl #struct_generics #struct_ident #struct_generics #where_clauses {
+            pub fn field_iter<#enum_lt>(&#enum_lt self) -> #iter_ident #enum_generics {
+                #iter_ident {
+                    idx: 0,
+                    inner: self
+                }
+            }
+        }
+
+        impl #enum_generics Iterator for #iter_ident #enum_generics #where_clauses {
+            type Item = (&'static str, #value_enum_ident #enum_generics);
+
+            fn next(&mut self) -> Option<Self::Item> {
+                (self.idx != #struct_ident_turbofish::FIELDS.len()).then(|| {
+                    let field_name = #struct_ident_turbofish::FIELDS[self.idx];
+                    self.idx += 1;
+                    (field_name, self.inner.field(field_name).unwrap())
+                })
+            }
+        }
+    }
 }
 
 fn shorten_type(type_str: String) -> String {

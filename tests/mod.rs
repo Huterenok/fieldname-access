@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 use fieldname_access::FieldnameAccess;
 
 #[derive(FieldnameAccess)]
@@ -218,11 +220,13 @@ fn test_complex_type_path() {
 #[derive(FieldnameAccess, Clone, Copy)]
 struct GenericStruct<'a, T, F>
 where
-    T: Into<String>,
+    T: Display,
+    F: Display,
 {
     name: &'a T,
     age: F,
 }
+
 #[test]
 fn generic_struct_fieldname_access() {
     let structure = GenericStruct {
@@ -234,6 +238,7 @@ fn generic_struct_fieldname_access() {
         GenericStructField::F(_age) => panic!(),
     }
 }
+
 #[derive(FieldnameAccess)]
 #[fieldname_enum(name = "Amazingly", derive = [Debug, Clone], derive_mut = [Debug])]
 struct NamedFieldname {
@@ -275,5 +280,71 @@ fn attributes() {
         }
         AmazinglyMut::AmazingAge(val) => assert_eq!(*val, 123),
         AmazinglyMut::I64(val) => assert_eq!(*val, 123),
+    }
+}
+
+#[test]
+fn const_field_list() {
+    assert_eq!(
+        NamedFieldname::FIELDS,
+        ["name", "age", "dog_age", "cat_age"]
+    );
+}
+
+#[test]
+fn simple_iter() {
+    let structure = NamedFieldname {
+        age: 123,
+        cat_age: 123,
+        dog_age: 123,
+        name: String::from("boba"),
+    };
+
+    let mut res = Vec::new();
+    structure.field_iter().for_each(|(name, val)| {
+        res.push(format!("{}={}", name, val));
+    });
+
+    let expected = "name=boba\nage=123\ndog_age=123\ncat_age=123".to_string();
+    assert_eq!(expected, res.join("\n"));
+}
+
+#[test]
+fn generic_iter() {
+    let external_var = String::from("boba");
+    let structure = GenericStruct {
+        age: 123,
+        name: &external_var,
+    };
+
+    let mut res = Vec::new();
+    structure.field_iter().for_each(|(name, val)| {
+        res.push(format!("{}={}", name, val));
+    });
+
+    let expected = "name=boba\nage=123".to_string();
+    assert_eq!(expected, res.join("\n"));
+}
+
+impl Display for Amazingly<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Amazingly::String(str) => write!(f, "{}", str),
+            Amazingly::AmazingAge(age) => write!(f, "{}", age),
+            Amazingly::I64(int) => write!(f, "{}", int),
+        }
+    }
+}
+
+impl<'a, T, F> Display for GenericStructField<'a, '_, T, F>
+where
+    T: Display,
+    F: Display,
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            GenericStructField::F(smth) => write!(f, "{}", smth),
+            GenericStructField::T(smth) => write!(f, "{}", smth),
+        }
     }
 }
