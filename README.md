@@ -96,6 +96,7 @@ Let's say we have a User structure and Crit criteria for it.
 use fieldname_access::FieldnameAccess;
 
 #[derive(FieldnameAccess)]
+#[fieldname_enum(derive_all = [Debug])]
 struct User {
     name: String,
     age: u64,
@@ -192,4 +193,14 @@ if let Some(UserFieldMut::Bool(does_love_ranni)) =
     *does_love_ranni = false; // HARAM
 }
 assert!(!user.does_love_ranni); //important
+```
+
+And iterate over struct fields
+
+```rust
+let not_so_pretty_output = user
+    .field_iter()
+    .map(|(field_name, enum_var)| format!("{}={:?}", field_name, enum_var))
+    .join("\n");
+println!("Here it is {}", not_so_pretty_output);
 ```
