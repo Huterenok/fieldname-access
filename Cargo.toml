@@ -1,8 +1,8 @@
 [package]
 name = "fieldname-access"
-version = "0.1.11"
+version = "0.1.12"
 edition = "2021"
-rust-version = "1.57"
+rust-version = "1.63"
 description = "Derive macro for safe struct field access by their names in runtime"
 license = "MIT OR Apache-2.0"
 authors = ["huterok"]
@@ -17,6 +17,6 @@ proc-macro = true
 
 [dependencies]
 itertools = "0.14.0"
-proc-macro2 = "1.0.78"
-quote = "1.0.35"
-syn = { version = "2.0.52", features = ["derive", "full", "extra-traits"] }
+proc-macro2 = "1.0.94"
+quote = "1.0.40"
+syn = { version = "2.0.100", features = ["derive", "full", "extra-traits"] }
